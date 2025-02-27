@@ -8,7 +8,7 @@ ORG_NAME="wellnite-org"
 REGISTRY_LINE="@${ORG_NAME}:registry=https://npm.pkg.github.com/"
 AUTH_LINE="//npm.pkg.github.com/:_authToken="
 ENV_VAR_NAME="GITHUB_TOKEN_WELLNITE"
-GITHUB_TOKEN_URL="https://github.com/settings/tokens"  
+GITHUB_TOKEN_URL="https://github.com/settings/tokens"
 
 # Detect OS for compatibility
 OS="$(uname -s)"
@@ -40,10 +40,10 @@ update_npmrc "$REGISTRY_LINE" ""
 if [ -n "${!ENV_VAR_NAME}" ]; then
   echo "🔑 Using token from environment variable: $ENV_VAR_NAME"
   update_npmrc "$AUTH_LINE" "${!ENV_VAR_NAME}"
-elif grep -qF "$AUTH_LINE" "$NPMRC_FILE"; then
+elif grep -qF "$AUTH_LINE" "$NPMRC_FILE" && grep -qE "^$AUTH_LINE[^ ]+" "$NPMRC_FILE"; then
   echo "✅ Authentication for GitHub Packages is already set."
 else
-  # Prompt user for token if it's not set
+  # Prompt user for token if it's not set or is empty
   echo "⚠️  GitHub token required for @$ORG_NAME package access."
   echo ""
   echo "📌 Generate a GitHub personal access token (classic) at:"
@@ -55,6 +55,13 @@ else
 
   read -s -p "Enter your GitHub token: " TOKEN
   echo ""
+
+  # Check if user entered a token
+  if [ -z "$TOKEN" ]; then
+    echo "❌ No token entered. Exiting."
+    exit 1
+  fi
+
   update_npmrc "$AUTH_LINE" "$TOKEN"
 fi
 
