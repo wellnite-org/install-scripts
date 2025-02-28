@@ -10,6 +10,9 @@ AUTH_LINE="//npm.pkg.github.com/:_authToken="
 ENV_VAR_NAME="GITHUB_TOKEN_WELLNITE"
 GITHUB_TOKEN_URL="https://github.com/settings/tokens"
 
+# Ensure .npmrc file exists
+touch "$NPMRC_FILE"
+
 # Ensure script is running interactively
 if [[ ! -t 0 ]]; then
     echo "⚠️  This script must be run interactively to enter the GitHub token."
@@ -32,8 +35,8 @@ update_npmrc() {
   local value="$2"
 
   if grep -qF "$key" "$NPMRC_FILE"; then
-    # Update existing entry (cross-platform sed command)
-    $SED_CMD "s|$key.*|$key$value|" "$NPMRC_FILE"
+    # Update existing entry
+    $SED_CMD "s|^$key.*|$key$value|" "$NPMRC_FILE"
   else
     # Add new entry
     echo "$key$value" >> "$NPMRC_FILE"
@@ -43,10 +46,10 @@ update_npmrc() {
 # Ensure registry is set
 update_npmrc "$REGISTRY_LINE" ""
 
-# Check if a valid token is already set
+# Check if a valid token is already set in environment
 if [ -n "${!ENV_VAR_NAME}" ]; then
   echo "🔑 Using token from environment variable: $ENV_VAR_NAME"
-  update_npmrc "$AUTH_LINE" "${!ENV_VAR_NAME}"
+  update_npmrc "$AUTH_LINE" "\${$ENV_VAR_NAME}"  # Reference env variable in .npmrc
 elif grep -qF "$AUTH_LINE" "$NPMRC_FILE" && grep -qE "^$AUTH_LINE[^ ]+" "$NPMRC_FILE"; then
   echo "✅ Authentication for GitHub Packages is already set."
 else
@@ -66,7 +69,8 @@ else
     echo ""
 
     if [ -n "$TOKEN" ]; then
-      update_npmrc "$AUTH_LINE" "$TOKEN"
+      export $ENV_VAR_NAME="$TOKEN"  # Make token available immediately
+      update_npmrc "$AUTH_LINE" "\${$ENV_VAR_NAME}"  # Reference env variable in .npmrc
       break
     else
       echo "❌ No token entered. Please enter a valid token."
