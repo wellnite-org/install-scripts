@@ -46,14 +46,8 @@ update_npmrc() {
 # Ensure registry is set
 update_npmrc "$REGISTRY_LINE" ""
 
-# Check if a valid token is already set in environment
-if [ -n "${!ENV_VAR_NAME}" ]; then
-  echo "🔑 Using token from environment variable: $ENV_VAR_NAME"
-  update_npmrc "$AUTH_LINE" "\${$ENV_VAR_NAME}"  # Reference env variable in .npmrc
-elif grep -qF "$AUTH_LINE" "$NPMRC_FILE" && grep -qE "^$AUTH_LINE[^ ]+" "$NPMRC_FILE"; then
-  echo "✅ Authentication for GitHub Packages is already set."
-else
-  # Force interactive mode and wait for valid input
+# Check if the environment variable is set
+if [ -z "${!ENV_VAR_NAME}" ]; then
   echo ""
   echo "⚠️  GitHub token required for @$ORG_NAME package access."
   echo ""
@@ -69,14 +63,20 @@ else
     echo ""
 
     if [ -n "$TOKEN" ]; then
-      export $ENV_VAR_NAME="$TOKEN"  # Make token available immediately
-      update_npmrc "$AUTH_LINE" "\${$ENV_VAR_NAME}"  # Reference env variable in .npmrc
+      export $ENV_VAR_NAME="$TOKEN"  # Set in the current session
+      echo "export $ENV_VAR_NAME=\"$TOKEN\"" >> "$HOME/.bashrc"  # Persist in .bashrc
+      if [[ -f "$HOME/.zshrc" ]]; then
+        echo "export $ENV_VAR_NAME=\"$TOKEN\"" >> "$HOME/.zshrc"  # Persist in .zshrc for macOS users
+      fi
       break
     else
       echo "❌ No token entered. Please enter a valid token."
     fi
   done
 fi
+
+# Now update .npmrc with the environment variable reference
+update_npmrc "$AUTH_LINE" "\${$ENV_VAR_NAME}"
 
 # Confirm before installing
 echo "📦 Installing @${ORG_NAME}/envsync..."
